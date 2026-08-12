@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>굿즈 재고 관리</title>
+<style>
+  :root{
+    --toss-blue:#3182F6;
+    --toss-blue-dark:#1B64DA;
+    --toss-blue-tint:#EAF2FF;
+    --ink:#191F28;
+    --page:#F2F6FC;
+    --card:#ffffff;
+    --line:#EDF1F7;
+    --good:#1B9C6E;
+    --warn:#FF9500;
+    --danger:#F04452;
+    --muted:#8B95A1;
+    --muted2:#B0B8C1;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--ink);}
+  body{min-height:100vh;-webkit-tap-highlight-color:transparent;}
+  .app{max-width:720px;margin:0 auto;padding:20px 16px 48px;}
+
+  .header{margin-bottom:18px;padding:6px 4px 0;}
+  .brand{display:flex;align-items:center;gap:7px;margin-bottom:14px;}
+  .brand-mark{width:26px;height:26px;border-radius:8px;background:var(--toss-blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;flex-shrink:0;}
+  .brand-name{font-size:13px;font-weight:800;color:var(--toss-blue);letter-spacing:-0.01em;}
+  .header h1{font-size:22px;font-weight:800;letter-spacing:-0.03em;margin:0 0 4px;line-height:1.3;}
+  .header .sub{font-size:13px;color:var(--muted);font-weight:500;}
+
+  .tabs{display:flex;background:var(--card);border-radius:14px;padding:4px;margin-bottom:16px;gap:4px;box-shadow:0 1px 2px rgba(25,31,40,0.04);}
+  .tab{flex:1;text-align:center;padding:11px 8px;border-radius:11px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;user-select:none;transition:background .15s, color .15s;}
+  .tab.active{background:var(--toss-blue);color:#fff;}
+
+  .date-row{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;}
+  .date-chip{flex:1;text-align:center;padding:10px 6px;border-radius:12px;border:none;background:var(--card);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;box-shadow:0 1px 2px rgba(25,31,40,0.04);}
+  .date-chip.active{background:var(--toss-blue);color:#fff;box-shadow:0 4px 10px rgba(49,130,246,0.28);}
+  .date-chip .today-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--good);margin-left:4px;vertical-align:middle;}
+  .date-chip.active .today-dot{background:#fff;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (min-width:481px){.grid{grid-template-columns:repeat(3,1fr);}}
+
+  .item-card{aspect-ratio:1/1;background:var(--card);border:1.5px solid #E3ECFB;border-radius:22px;padding:10px 8px 10px;position:relative;overflow:hidden;cursor:pointer;user-select:none;transition:transform .08s ease, box-shadow .15s ease;box-shadow:0 2px 6px rgba(25,31,40,0.07), 0 14px 28px -16px rgba(49,130,246,0.28);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .item-card:active{transform:scale(0.97);}
+  .item-card.empty{opacity:.5;cursor:not-allowed;}
+  .item-card.empty:active{transform:none;}
+  .item-name{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:2px;}
+  .item-icon{width:100%;flex:1 1 auto;display:flex;align-items:center;justify-content:center;line-height:1;min-height:0;}
+  .item-icon img{max-width:100%;max-height:100%;object-fit:contain;}
+  .item-stock{font-size:20px;font-weight:800;letter-spacing:-0.03em;color:var(--ink);margin-top:2px;}
+  .item-stock.low{color:var(--warn);}
+  .item-stock.out{color:var(--danger);}
+  .item-stock .unit{font-size:11px;font-weight:600;color:var(--muted2);margin-left:1px;}
+  .undo-btn{margin-top:6px;width:100%;padding:6px 4px;border-radius:9px;border:none;background:var(--page);font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;flex-shrink:0;}
+  .undo-btn:active{background:var(--toss-blue-tint);color:var(--toss-blue-dark);}
+  .undo-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 1px 3px rgba(25,31,40,0.05), 0 8px 20px -14px rgba(25,31,40,0.15);}
+  thead th{background:var(--toss-blue-tint);color:var(--toss-blue-dark);font-size:12px;font-weight:800;padding:12px 6px;text-align:center;}
+  tbody td{font-size:13px;padding:11px 6px;text-align:center;border-top:1px solid var(--line);color:var(--ink);}
+  tbody td.name{text-align:left;font-weight:700;padding-left:14px;}
+  tbody tr:nth-child(even){background:#FBFCFE;}
+  .stock-cell{font-weight:800;color:var(--toss-blue-dark);}
+  .stock-cell.low{color:var(--warn);}
+  .stock-cell.out{color:var(--danger);}
+  .summary-row{display:flex;gap:10px;margin-bottom:14px;}
+  .summary-box{flex:1;background:var(--card);border-radius:16px;padding:14px 10px;text-align:center;box-shadow:0 1px 3px rgba(25,31,40,0.05), 0 8px 20px -14px rgba(25,31,40,0.15);}
+  .summary-box .num{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-0.02em;}
+  .summary-box .lbl{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;}
+
+  .section-title{font-size:14px;font-weight:800;margin:22px 2px 10px;color:var(--ink);}
+  .log-box{background:var(--card);border-radius:16px;box-shadow:0 1px 3px rgba(25,31,40,0.05), 0 8px 20px -14px rgba(25,31,40,0.15);max-height:260px;overflow-y:auto;}
+  .log-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);}
+  .log-row:first-child{border-top:none;}
+  .log-row.cancelled{opacity:.55;}
+  .log-time{font-size:10.5px;font-weight:700;color:var(--muted2);width:82px;flex-shrink:0;line-height:1.5;}
+  .log-date-event{color:var(--toss-blue-dark);}
+  .log-date-entry{color:var(--muted2);}
+  .log-item{font-size:12.5px;font-weight:700;color:var(--ink);flex:1;}
+  .log-staff{font-size:12px;font-weight:700;color:var(--toss-blue-dark);background:var(--toss-blue-tint);padding:3px 9px;border-radius:10px;flex-shrink:0;}
+  .log-staff.cancel{color:var(--danger);background:#FCE9EA;}
+  .log-empty{padding:28px 14px;text-align:center;font-size:12.5px;color:var(--muted2);}
+  .log-actions{display:flex;gap:8px;margin-top:10px;}
+  .ghost-btn{flex:1;padding:10px;border-radius:12px;border:none;background:var(--card);color:var(--toss-blue-dark);font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 1px 2px rgba(25,31,40,0.04);}
+  .ghost-btn:active{background:var(--toss-blue-tint);}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;z-index:50;box-shadow:0 8px 24px rgba(25,31,40,0.25);max-width:88vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .loading{text-align:center;padding:60px 0;color:var(--muted);font-size:13px;}
+  .error-box{background:#FCE9EA;border-radius:14px;padding:16px;color:var(--danger);font-size:12.5px;font-weight:600;line-height:1.6;margin-bottom:16px;}
+
+  .staff-selector{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:16px;cursor:pointer;box-shadow:0 1px 2px rgba(25,31,40,0.04);}
+  .staff-selector-label{font-size:11.5px;font-weight:700;color:var(--muted2);}
+  .staff-selector-name{flex:1;font-size:14.5px;font-weight:800;color:var(--ink);}
+  .staff-selector-change{font-size:11px;font-weight:700;color:var(--toss-blue);background:var(--toss-blue-tint);padding:4px 9px;border-radius:9px;}
+  .item-card.locked{opacity:.7;}
+
+  .overlay{position:fixed;inset:0;background:rgba(25,31,40,0.45);display:flex;align-items:flex-end;justify-content:center;z-index:80;opacity:0;pointer-events:none;transition:opacity .18s;}
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .sheet{width:100%;max-width:720px;background:var(--card);border-radius:24px 24px 0 0;padding:18px 18px 26px;transform:translateY(16px);transition:transform .18s;max-height:78vh;overflow-y:auto;}
+  .overlay.show .sheet{transform:translateY(0);}
+  .sheet-title{font-size:16px;font-weight:800;margin-bottom:2px;}
+  .sheet-sub{font-size:12.5px;color:var(--muted);margin-bottom:14px;}
+  .staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .staff-btn{padding:14px 6px;border-radius:14px;border:none;background:var(--page);font-size:14px;font-weight:700;color:var(--ink);cursor:pointer;}
+  .staff-btn:active{background:var(--toss-blue);color:#fff;}
+  .sheet-cancel{width:100%;margin-top:14px;padding:12px;border-radius:14px;background:var(--card);color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--line);}
+
+  .sync-badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--muted2);margin-top:8px;}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--good);}
+  .sync-dot.busy{background:var(--warn);}
+  .sync-dot.error{background:var(--danger);}
+</style>
+</head>
+<body>
+<div id="root" class="app"><div class="loading">불러오는 중…</div></div>
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-title">담당자 선택</div>
+    <div class="sheet-sub" id="sheetSub"></div>
+    <div class="staff-grid" id="staffGrid"></div>
+    <button class="sheet-cancel" id="sheetCancel">취소</button>
+  </div>
+</div>
+
+<script>
+/**
+ * ⚠️ 배포 전 필수 설정
+ * 아래 WEBHOOK_URL에 Apps Script 웹 앱 배포 URL을 붙여넣으세요.
+ * (구글시트 > 확장 프로그램 > Apps Script > sheet_sync.gs 코드 배포 후 나오는 URL)
+ * 이 값이 없으면 앱이 재고 데이터를 전혀 불러오지 못합니다.
+ */
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwPQrUWfSHQFOBDPBb5gdDNd-hM1A02Y3rlhhVFQEkjbtySPEIBOJg8EckFlOqcktMN/exec"
+
+const ITEMS = [
+  { name: "손선풍기", total: 50, image: "images/hand-fan.png" },
+  { name: "반다나", total: 300, image: "images/bandana.png" },
+  { name: "쿨타월", total: 400, image: "images/cool-towel.png" },
+  { name: "타투스티커", total: 500, image: "images/tattoo-sticker.png" },
+  { name: "반투명짐쌕", total: 500, image: "images/gym-sack.png" },
+  { name: "부채", total: 2000, image: "images/hand-fan-round.png" },
+];
+const DATES = ["8-14", "8-15", "8-16"];
+
+// 요일별 참여 인원(담당자 후보) — 금 8-14 / 토 8-15 / 일 8-16
+const STAFF = {
+  "8-14": ["김지훈","이지민","김현아","변수현","김세영","이다희","이은채","이서연","백가민","황국현","양수연","박주원","백다현"],
+  "8-15": ["김지훈","이지민","최승훈","변수현","한민서","오화종","이은채","한가온","이예은","황국현","양수연","박주원"],
+  "8-16": ["김지훈","이지민","최승훈","변수현","한민서","오화종","장서영","정수현","이예은","황국현","양수연","박주원"],
+};
+
+let state = { usage: {}, stock: {}, log: [] };
+let activeTab = "issue";
+let activeDate = pickDefaultDate();
+let activeStaff = null;
+let pendingItem = null;
+let syncStatus = "idle"; // idle | busy | error
+let loadError = null;
+let jsonpCounter = 0;
+
+function pickDefaultDate(){
+  const now = new Date();
+  const md = `${now.getMonth()+1}-${now.getDate()}`;
+  return DATES.includes(md) ? md : DATES[0];
+}
+function formatDateLabel(d){
+  const [m, day] = d.split("-");
+  return `${m}월 ${day}일`;
+}
+function formatDateShort(d){
+  const [m, day] = d.split("-");
+  return `${m}/${day}`;
+}
+function formatTime(ts){
+  const d = new Date(ts);
+  const h = String(d.getHours()).padStart(2,"0");
+  const min = String(d.getMinutes()).padStart(2,"0");
+  return `${h}:${min}`;
+}
+function formatEntryDate(ts){
+  const d = new Date(ts);
+  return `${d.getMonth()+1}월 ${d.getDate()}일`;
+}
+function formatEntryDateShort(ts){
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+// --- JSONP로 시트 상태 읽기 (CORS 우회) ---
+function fetchState(){
+  return new Promise((resolve, reject) => {
+    if(!WEBHOOK_URL || WEBHOOK_URL.indexOf("PASTE_YOUR") > -1){
+      reject(new Error("WEBHOOK_URL이 설정되지 않았어요. 코드 상단의 WEBHOOK_URL 값을 Apps Script 배포 URL로 바꿔주세요."));
+      return;
+    }
+    jsonpCounter += 1;
+    const cbName = "goodsInventoryCb_" + jsonpCounter;
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("응답 시간 초과 — 네트워크 또는 배포 URL을 확인해주세요."));
+    }, 12000);
+    function cleanup(){
+      clearTimeout(timeout);
+      delete window[cbName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[cbName] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+    const script = document.createElement("script");
+    script.src = `${WEBHOOK_URL}?callback=${cbName}&_=${Date.now()}`;
+    script.onerror = () => { cleanup(); reject(new Error("스크립트 로드 실패 — 배포 URL 또는 접근 권한을 확인해주세요.")); };
+    document.body.appendChild(script);
+  });
+}
+
+// --- 시트에 지급/취소 기록 (fire-and-forget) ---
+async function postToSheet(entry){
+  await fetch(WEBHOOK_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(entry)
+  });
+}
+
+async function refreshState(showLoadingToast){
+  syncStatus = "busy";
+  render();
+  try{
+    const data = await fetchState();
+    state.usage = data.usage || {};
+    state.stock = data.stock || {};
+    state.log = data.log || [];
+    syncStatus = "idle";
+    loadError = null;
+  }catch(err){
+    syncStatus = "error";
+    loadError = err.message;
+  }
+  render();
+}
+
+function remaining(itemName){
+  if(typeof state.stock[itemName] === "number") return state.stock[itemName];
+  const item = ITEMS.find(i => i.name === itemName);
+  const used = DATES.reduce((s,d)=> s + ((state.usage[itemName]||{})[d] || 0), 0);
+  return item ? item.total - used : 0;
+}
+function ratioClass(remain, total){
+  if(remain <= 0) return "out";
+  if(remain / total <= 0.5) return "low";
+  return "";
+}
+
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById("toast");
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove("show"), 1800);
+}
+
+// --- 담당자 선택 모달 ---
+function openStaffPicker(){
+  document.getElementById("sheetSub").textContent = `${formatDateLabel(activeDate)} 참여 인원`;
+  const grid = document.getElementById("staffGrid");
+  grid.innerHTML = (STAFF[activeDate] || []).map(name =>
+    `<button class="staff-btn" data-staff="${name}">${name}</button>`
+  ).join("");
+  grid.querySelectorAll(".staff-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeStaff = btn.dataset.staff;
+      closeStaffPicker();
+      render();
+      if(pendingItem){
+        const toIssue = pendingItem;
+        pendingItem = null;
+        issueItem(toIssue);
+      }
+    });
+  });
+  document.getElementById("overlay").classList.add("show");
+}
+function closeStaffPicker(){
+  document.getElementById("overlay").classList.remove("show");
+}
+
+// --- 담당자 지정 지급 ---
+async function issueItem(itemName){
+  if(!activeStaff){
+    pendingItem = itemName;
+    openStaffPicker();
+    return;
+  }
+  if(remaining(itemName) <= 0){
+    showToast(`${itemName} 재고 없음`);
+    return;
+  }
+  const ts = Date.now();
+  showToast(`처리 중… ${itemName}`);
+  try{
+    await postToSheet({ action: "issue", item: itemName, dateKey: activeDate, dateLabel: formatDateLabel(activeDate), entryDate: formatEntryDate(ts), time: formatTime(ts), staff: activeStaff });
+    await refreshState();
+    showToast(`${itemName} 1개 차감 · ${activeStaff} (${formatTime(ts)})`);
+  }catch(err){
+    showToast("전송 실패 — 네트워크를 확인해주세요");
+  }
+}
+
+async function undoLast(itemName){
+  const used = (state.usage[itemName] || {})[activeDate] || 0;
+  if(used <= 0){
+    showToast("되돌릴 기록이 없어요");
+    return;
+  }
+  const ts = Date.now();
+  showToast(`되돌리는 중… ${itemName}`);
+  try{
+    await postToSheet({ action: "undo", item: itemName, dateKey: activeDate, dateLabel: formatDateLabel(activeDate), entryDate: formatEntryDate(ts), time: formatTime(ts), staff: activeStaff || "미지정" });
+    await refreshState();
+    showToast(`${itemName} 되돌림`);
+  }catch(err){
+    showToast("전송 실패 — 네트워크를 확인해주세요");
+  }
+}
+
+function renderIssuePage(){
+  const dateChips = DATES.map(d => `
+    <div class="date-chip ${d===activeDate?'active':''}" data-date="${d}">
+      ${formatDateLabel(d)}${d===pickDefaultDate() ? '<span class="today-dot"></span>' : ''}
+    </div>
+  `).join("");
+
+  const staffButton = `
+    <div class="staff-selector" id="staffSelectorBtn">
+      <span class="staff-selector-label">담당자</span>
+      <span class="staff-selector-name">${activeStaff ? activeStaff : '미지정 · 탭하여 선택'}</span>
+      ${activeStaff ? '<span class="staff-selector-change">변경</span>' : ''}
+    </div>
+  `;
+
+  const cards = ITEMS.map(it => {
+    const rem = remaining(it.name);
+    const usedToday = (state.usage[it.name] || {})[activeDate] || 0;
+    const cls = ratioClass(rem, it.total);
+    const isEmpty = rem <= 0;
+    return `
+      <div class="item-card ${isEmpty?'empty':''} ${!activeStaff?'locked':''}" data-item="${it.name}">
+        <div class="item-name">${it.name}</div>
+        <div class="item-icon"><img src="${it.image}" alt="${it.name}" loading="lazy"></div>
+        <div class="item-stock ${cls}">${rem.toLocaleString()}<span class="unit">개</span></div>
+        <button class="undo-btn" data-undo="${it.name}" ${usedToday<=0?'disabled':''}>↩ 되돌리기</button>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="date-row">${dateChips}</div>
+    ${staffButton}
+    <div class="grid">${cards}</div>
+    ${syncBadge()}
+  `;
+}
+
+function syncBadge(){
+  const cls = syncStatus === "busy" ? "busy" : (syncStatus === "error" ? "error" : "");
+  const label = syncStatus === "busy" ? "동기화 중" : (syncStatus === "error" ? "동기화 실패 — 새로고침 필요" : "구글시트와 동기화됨");
+  return `<div class="sync-badge"><span class="sync-dot ${cls}"></span>${label}</div>`;
+}
+
+function renderStatusPage(){
+  const totalGoods = ITEMS.reduce((s,i)=>s+i.total,0);
+  const totalRemain = ITEMS.reduce((s,i)=>s+remaining(i.name),0);
+  const totalUsedAll = totalGoods - totalRemain;
+
+  const rows = ITEMS.map(it => {
+    const rem = remaining(it.name);
+    const cls = ratioClass(rem, it.total);
+    const dateCells = DATES.map(d => `<td>${(state.usage[it.name]||{})[d] || 0}</td>`).join("");
+    return `
+      <tr>
+        <td class="name">${it.name}</td>
+        <td>${it.total.toLocaleString()}</td>
+        ${dateCells}
+        <td class="stock-cell ${cls}">${rem.toLocaleString()}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const recentLog = [...state.log].reverse().slice(0, 40);
+  const logRows = recentLog.length
+    ? recentLog.map(e => `
+        <div class="log-row ${e.action==='취소'?'cancelled':''}">
+          <div class="log-time">
+            <div class="log-date-event">행사 ${e.eventDate || ''}</div>
+            <div class="log-date-entry">${e.entryDate || ''} ${e.time || ''}</div>
+          </div>
+          <div class="log-item">${e.item}</div>
+          <div class="log-staff ${e.action==='취소'?'cancel':''}">${e.action==='취소' ? '취소·' : ''}${e.staff}</div>
+        </div>
+      `).join("")
+    : `<div class="log-empty">아직 지급 기록이 없어요</div>`;
+
+  return `
+    <div class="summary-row">
+      <div class="summary-box"><div class="num">${totalGoods.toLocaleString()}</div><div class="lbl">전체 수량</div></div>
+      <div class="summary-box"><div class="num">${totalUsedAll.toLocaleString()}</div><div class="lbl">누적 지급</div></div>
+      <div class="summary-box"><div class="num">${totalRemain.toLocaleString()}</div><div class="lbl">총 재고</div></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;padding-left:12px;">품목</th>
+          <th>합계</th>
+          ${DATES.map(d=>`<th>${formatDateShort(d)}</th>`).join("")}
+          <th>재고</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="section-title">지급 기록 (행사날짜 · 입력날짜 · 시간 · 담당자)</div>
+    <div class="log-box">${logRows}</div>
+    <div class="log-actions">
+      <button class="ghost-btn" id="csvBtn">CSV로 내려받기</button>
+      <button class="ghost-btn" id="refreshBtn">새로고침</button>
+    </div>
+    ${syncBadge()}
+  `;
+}
+
+function render(){
+  const root = document.getElementById("root");
+
+  if(loadError){
+    root.innerHTML = `
+      <div class="header">
+        <div class="brand"><div class="brand-mark">J</div><div class="brand-name">전주얼티밋뮤직페스티벌 · 부스 운영</div></div>
+        <h1>굿즈 재고 관리</h1>
+      </div>
+      <div class="error-box">
+        시트에 연결하지 못했어요.<br>${loadError}
+      </div>
+      <button class="ghost-btn" id="retryBtn" style="width:100%;">다시 시도</button>
+      <div class="toast" id="toast"></div>
+    `;
+    document.getElementById("retryBtn").addEventListener("click", () => refreshState());
+    return;
+  }
+
+  root.innerHTML = `
+    <div class="header">
+      <div class="brand"><div class="brand-mark">J</div><div class="brand-name">전주얼티밋뮤직페스티벌 · 부스 운영</div></div>
+      <h1>굿즈 재고 관리</h1>
+      <div class="sub">담당자를 먼저 고르고 품목을 탭하면 재고가 1개씩 차감돼요</div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${activeTab==='issue'?'active':''}" data-tab="issue">재고 차감</div>
+      <div class="tab ${activeTab==='status'?'active':''}" data-tab="status">재고 현황</div>
+    </div>
+    ${activeTab === 'issue' ? renderIssuePage() : renderStatusPage()}
+    <div class="toast" id="toast"></div>
+  `;
+  attachEvents();
+}
+
+function downloadCsv(){
+  const header = "행사날짜,입력날짜,시간,품목,담당자,구분\n";
+  const rows = state.log.map(e =>
+    `${e.eventDate || ''},${e.entryDate || ''},${e.time || ''},${e.item},${e.staff},${e.action || '지급'}`
+  ).join("\n");
+  const csv = "\uFEFF" + header + rows;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "굿즈_지급기록.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function attachEvents(){
+  document.querySelectorAll(".tab").forEach(el => {
+    el.addEventListener("click", () => { activeTab = el.dataset.tab; render(); });
+  });
+  document.querySelectorAll(".date-chip").forEach(el => {
+    el.addEventListener("click", () => {
+      activeDate = el.dataset.date;
+      if(!(STAFF[activeDate] || []).includes(activeStaff)) activeStaff = null;
+      render();
+    });
+  });
+  const staffBtn = document.getElementById("staffSelectorBtn");
+  if(staffBtn) staffBtn.addEventListener("click", () => { pendingItem = null; openStaffPicker(); });
+  document.querySelectorAll(".item-card").forEach(el => {
+    el.addEventListener("click", (e) => {
+      if(e.target.closest(".undo-btn")) return;
+      issueItem(el.dataset.item);
+    });
+  });
+  document.querySelectorAll("[data-undo]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); undoLast(el.dataset.undo); });
+  });
+  const csvBtn = document.getElementById("csvBtn");
+  if(csvBtn) csvBtn.addEventListener("click", downloadCsv);
+  const refreshBtn = document.getElementById("refreshBtn");
+  if(refreshBtn) refreshBtn.addEventListener("click", () => refreshState());
+}
+
+document.getElementById("sheetCancel").addEventListener("click", () => { pendingItem = null; closeStaffPicker(); });
+document.getElementById("overlay").addEventListener("click", (e) => {
+  if(e.target.id === "overlay"){ pendingItem = null; closeStaffPicker(); }
+});
+
+// 여러 기기에서 같은 재고를 보도록 20초마다 자동 새로고침
+setInterval(() => { if(!loadError) refreshState(); }, 20000);
+
+refreshState();
+</script>
+</body>
+</html>
